@@ -4,6 +4,7 @@ Django settings for ShopSphere.
 """
 
 import os
+import dj_database_url
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -42,6 +43,15 @@ CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "CORS_ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
+    if origin.strip()
+]
+# CSRF: Configure trusted origins separately when required.
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CSRF_TRUSTED_ORIGINS",
         "http://localhost:5173,http://127.0.0.1:5173",
     ).split(",")
     if origin.strip()
@@ -127,17 +137,31 @@ ASGI_APPLICATION = "config.asgi.application"
 
 
 # PostgreSQL database
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME", "shopsphere_db"),
-        "USER": os.getenv("DB_USER", "shopsphere_user"),
-        "PASSWORD": os.getenv("DB_PASSWORD", ""),
-        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
-        "PORT": os.getenv("DB_PORT", "5432"),
-        "CONN_MAX_AGE": 60,
+# Database configuration
+# Use DATABASE_URL in production; otherwise use local PostgreSQL settings.
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=60,
+        )
     }
-}
+    DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME", "shopsphere_db"),
+            "USER": os.getenv("DB_USER", "shopsphere_user"),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+            "CONN_MAX_AGE": 60,
+            "CONN_HEALTH_CHECKS": True,
+        }
+    }
 
 
 # Django REST Framework
@@ -178,11 +202,6 @@ SPECTACULAR_SETTINGS = {
 }
 
 
-# React frontend development server
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
 
 
 # Password validation
